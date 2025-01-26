@@ -1,54 +1,81 @@
-import { useState } from "react";
+// TournamentPage.tsx
+import { useState, useEffect } from "react";
 
 function TournamentPage() {
-  // State for the current round and character data
   const [round, setRound] = useState(1);
-  const [characters, setCharacters] = useState([
-    { id: 1, name: "Naruto", img: "https://via.placeholder.com/200x300", color: "red" },
-    { id: 2, name: "Sasuke", img: "https://via.placeholder.com/200x300", color: "blue" },
-  ]);
+  const [characters, setCharacters] = useState([]);
+  const [leftCharacter, setLeftCharacter] = useState(null);
+  const [rightCharacter, setRightCharacter] = useState(null);
 
-  // Function to handle image click and move to the next round
-  const handleCharacterClick = (selectedCharacterId: number) => {
-    // Simulate new characters for the next round
-    const nextCharacters = [
-      { id: 3, name: "New Character 1", img: "https://via.placeholder.com/200x300", color: "red" },
-      { id: 4, name: "New Character 2", img: "https://via.placeholder.com/200x300", color: "blue" },
-    ];
+  // Fetch characters from backend
+  useEffect(() => {
+    async function fetchCharacters() {
+      const response = await fetch("/api/characters/");
+      const data = await response.json();
+      setCharacters(data);
+      initializeMatches(data);
+    }
+    fetchCharacters();
+  }, []);
 
-    // Update the round and characters
-    setRound(round + 1);
-    setCharacters(nextCharacters);
+  // Initialize matches
+  const initializeMatches = (data) => {
+    const shuffled = [...data].sort(() => Math.random() - 0.5);
+    setLeftCharacter(shuffled[0]);
+    setRightCharacter(shuffled[1]);
   };
+
+  // Handle character click
+  const handleCharacterClick = (side) => {
+    const nextCharacters = characters.slice(2); // Remove current pair
+    if (side === "left") {
+      nextCharacters.push(leftCharacter);
+    } else {
+      nextCharacters.push(rightCharacter);
+    }
+
+    if (nextCharacters.length === 1) {
+      alert(`The winner is ${nextCharacters[0].name}`);
+      setRound(1);
+      fetchCharacters(); // Restart tournament
+      return;
+    }
+
+    setCharacters(nextCharacters);
+    setLeftCharacter(nextCharacters[0]);
+    setRightCharacter(nextCharacters[1]);
+    setRound(round + 1);
+  };
+
+  if (!leftCharacter || !rightCharacter) return <p>Loading...</p>;
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4">
-      {/* Title and Round Info */}
       <div className="text-center mb-8">
         <h1 className="text-2xl font-bold">The Best Character</h1>
         <p className="text-sm text-gray-400">
-          Rounds of 64 <span className="text-blue-400">{round}/32</span>
+          Rounds of 64 <span className="text-blue-400">{round}</span>
         </p>
       </div>
-
-      {/* Characters and VS Section */}
       <div className="flex items-center justify-center space-x-8">
-        {characters.map((character) => (
-          <div key={character.id} className="text-center">
-            <div
-              className={`border-4 border-${character.color}-500 rounded-md overflow-hidden cursor-pointer`}
-              onClick={() => handleCharacterClick(character.id)}
-            >
-              <img
-                src={character.img}
-                alt={character.name}
-                className="w-48 h-72 object-cover"
-              />
-            </div>
-            <p className="mt-4 font-bold">{character.name}</p>
-
-          </div>
-        ))}
+        {/* Left Character */}
+        <div
+          className="text-center border-4 border-red-500 rounded-md overflow-hidden cursor-pointer"
+          onClick={() => handleCharacterClick("left")}
+        >
+          <img src={leftCharacter.img} alt={leftCharacter.name} className="w-[20rem] h-72 object-cover" />
+          <p className="mt-4 font-bold">{leftCharacter.name}</p>
+        </div>
+        {/* VS */}
+        <div className="text-4xl font-bold text-gray-500">VS</div>
+        {/* Right Character */}
+        <div
+          className="text-center border-4 border-blue-500 rounded-md overflow-hidden cursor-pointer"
+          onClick={() => handleCharacterClick("right")}
+        >
+          <img src={rightCharacter.img} alt={rightCharacter.name} className="w-[20rem] h-72 object-cover" />
+          <p className="mt-4 font-bold">{rightCharacter.name}</p>
+        </div>
       </div>
     </div>
   );
