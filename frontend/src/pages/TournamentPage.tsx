@@ -4,10 +4,12 @@ import { useState, useEffect } from "react";
 function TournamentPage() {
   const [round, setRound] = useState(1);
   const [characters, setCharacters] = useState([]);
+  const [currentMatches, setCurrentMatches] = useState([]);
   const [leftCharacter, setLeftCharacter] = useState(null);
   const [rightCharacter, setRightCharacter] = useState(null);
+  const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
 
-  // Fetch characters from backend
+  // Fetch characters from the backend
   useEffect(() => {
     async function fetchCharacters() {
       const response = await fetch("/api/characters/");
@@ -18,33 +20,50 @@ function TournamentPage() {
     fetchCharacters();
   }, []);
 
-  // Initialize matches
+  // Initialize matches for a round
   const initializeMatches = (data) => {
     const shuffled = [...data].sort(() => Math.random() - 0.5);
-    setLeftCharacter(shuffled[0]);
-    setRightCharacter(shuffled[1]);
+    const matches = [];
+    for (let i = 0; i < shuffled.length; i += 2) {
+      matches.push([shuffled[i], shuffled[i + 1]]);
+    }
+    setCurrentMatches(matches);
+    setLeftCharacter(matches[0][0]);
+    setRightCharacter(matches[0][1]);
   };
 
-  // Handle character click
+  // Handle character selection
   const handleCharacterClick = (side) => {
-    const nextCharacters = characters.slice(2); // Remove current pair
-    if (side === "left") {
-      nextCharacters.push(leftCharacter);
+    const selectedCharacter = side === "left" ? leftCharacter : rightCharacter;
+
+    // Save the winner for the current match
+    const updatedMatches = [...currentMatches];
+    updatedMatches[currentMatchIndex][2] = selectedCharacter; // Store winner in the third position of the current match
+
+    const nextMatchIndex = currentMatchIndex + 1;
+
+    // Move to the next match
+    if (nextMatchIndex < updatedMatches.length) {
+      setLeftCharacter(updatedMatches[nextMatchIndex][0]);
+      setRightCharacter(updatedMatches[nextMatchIndex][1]);
+      setCurrentMatchIndex(nextMatchIndex);
     } else {
-      nextCharacters.push(rightCharacter);
-    }
+      // Prepare for the next round
+      const nextRoundCharacters = updatedMatches.map((match) => match[2]); // Collect all winners
+      if (nextRoundCharacters.length === 1) {
+        alert(`The winner is ${nextRoundCharacters[0].name}`);
+        // Restart tournament
+        setRound(1);
+        setCurrentMatchIndex(0);
+        setCurrentMatches([]);
+        fetchCharacters();
+        return;
+      }
 
-    if (nextCharacters.length === 1) {
-      alert(`The winner is ${nextCharacters[0].name}`);
-      setRound(1);
-      fetchCharacters(); // Restart tournament
-      return;
+      setRound(round + 1);
+      initializeMatches(nextRoundCharacters); // Start the next round
+      setCurrentMatchIndex(0);
     }
-
-    setCharacters(nextCharacters);
-    setLeftCharacter(nextCharacters[0]);
-    setRightCharacter(nextCharacters[1]);
-    setRound(round + 1);
   };
 
   if (!leftCharacter || !rightCharacter) return <p>Loading...</p>;
@@ -54,7 +73,7 @@ function TournamentPage() {
       <div className="text-center mb-8">
         <h1 className="text-2xl font-bold">The Best Character</h1>
         <p className="text-sm text-gray-400">
-          Rounds of 64 <span className="text-blue-400">{round}</span>
+          Round <span className="text-blue-400">{round}</span>
         </p>
       </div>
       <div className="flex items-center justify-center space-x-8">
@@ -63,8 +82,12 @@ function TournamentPage() {
           className="text-center border-4 border-red-500 rounded-md overflow-hidden cursor-pointer"
           onClick={() => handleCharacterClick("left")}
         >
-          <img src={leftCharacter.img} alt={leftCharacter.name} className="w-[20rem] h-72 object-cover" />
-          <p className="mt-4 font-bold">{leftCharacter.name}</p>
+          <img
+            src={leftCharacter?.img}
+            alt={leftCharacter?.name}
+            className="w-[20rem] h-72 object-cover"
+          />
+          <p className="mt-4 font-bold">{leftCharacter?.name}</p>
         </div>
         {/* VS */}
         <div className="text-4xl font-bold text-gray-500">VS</div>
@@ -73,8 +96,12 @@ function TournamentPage() {
           className="text-center border-4 border-blue-500 rounded-md overflow-hidden cursor-pointer"
           onClick={() => handleCharacterClick("right")}
         >
-          <img src={rightCharacter.img} alt={rightCharacter.name} className="w-[20rem] h-72 object-cover" />
-          <p className="mt-4 font-bold">{rightCharacter.name}</p>
+          <img
+            src={rightCharacter?.img}
+            alt={rightCharacter?.name}
+            className="w-[20rem] h-72 object-cover"
+          />
+          <p className="mt-4 font-bold">{rightCharacter?.name}</p>
         </div>
       </div>
     </div>
