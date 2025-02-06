@@ -24,5 +24,12 @@ class CharacterListView(APIView):
             return Response(default_characters)
 
         # Serialize and return characters from the database
-        serializer = CharacterSerializer(characters, many=True)
+        serializer = CharacterSerializer(characters, many=True, context={'request': request})
         return Response(serializer.data)
+
+    def post(self, request):
+        serializer = CharacterSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
